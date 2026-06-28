@@ -350,22 +350,29 @@
     </div>
 
     <div class="content">
-      <!-- Step 1: Capture Selfie -->
+      <!-- Step 1: Capture Selfie or Upload -->
       <div id="step1" class="section">
-        <div class="section-title">Step 1: Take a Selfie</div>
+        <div class="section-title">Step 1: Choose Your Photo</div>
+        
+        <div class="button-group">
+          <button id="startCameraBtn" class="btn-primary">📷 Take a Selfie</button>
+          <button id="uploadPhotoBtn" class="btn-primary">📤 Upload Photo</button>
+        </div>
+        
+        <input type="file" id="photoUpload" accept="image/*" style="display: none;">
+
         <div class="camera-container" id="cameraContainer">
           <video id="videoStream" playsinline autoplay></video>
         </div>
         <canvas id="photoCanvas" width="640" height="480"></canvas>
 
         <div id="previewContainer" class="preview-container">
-          <img id="previewImage" class="preview-image" src="" alt="Your selfie">
+          <img id="previewImage" class="preview-image" src="" alt="Your photo">
         </div>
 
-        <div class="button-group">
-          <button id="startCameraBtn" class="btn-primary">📷 Start Camera</button>
-          <button id="captureSelfieBtn" class="btn-success hidden">✓ Capture Photo</button>
-          <button id="retakeBtn" class="btn-secondary hidden">🔄 Retake Photo</button>
+        <div class="button-group" id="cameraControls" style="display: none;">
+          <button id="captureSelfieBtn" class="btn-success">✓ Capture Photo</button>
+          <button id="retakeBtn" class="btn-secondary">🔄 Retake</button>
         </div>
       </div>
 
@@ -424,6 +431,8 @@
   <script>
     const elements = {
       startCameraBtn: document.getElementById('startCameraBtn'),
+      uploadPhotoBtn: document.getElementById('uploadPhotoBtn'),
+      photoUpload: document.getElementById('photoUpload'),
       captureSelfieBtn: document.getElementById('captureSelfieBtn'),
       retakeBtn: document.getElementById('retakeBtn'),
       findMatchesBtn: document.getElementById('findMatchesBtn'),
@@ -439,6 +448,7 @@
       matchesGrid: document.getElementById('matchesGrid'),
       downloadSection: document.getElementById('downloadSection'),
       successBanner: document.getElementById('successBanner'),
+      cameraControls: document.getElementById('cameraControls'),
     };
 
     // Auto-connect to Google Drive folder
@@ -458,6 +468,55 @@
       { name: 'Archive_Old_Photos.jpg', similarity: 61 },
     ];
 
+    // Upload Photo
+    elements.uploadPhotoBtn.addEventListener('click', () => {
+      elements.photoUpload.click();
+    });
+
+    elements.photoUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        elements.previewImage.src = event.target.result;
+        elements.previewContainer.classList.add('active');
+        elements.cameraContainer.classList.remove('active');
+        elements.cameraControls.style.display = 'none';
+        elements.uploadPhotoBtn.style.display = 'none';
+        elements.startCameraBtn.style.display = 'none';
+
+        // Add retake button visibility
+        const retakeBtn = document.createElement('button');
+        retakeBtn.className = 'btn-secondary';
+        retakeBtn.textContent = '🔄 Choose Different Photo';
+        retakeBtn.id = 'uploadRetakeBtn';
+        retakeBtn.addEventListener('click', resetUpload);
+        
+        if (!document.getElementById('uploadRetakeBtn')) {
+          elements.previewContainer.parentElement.insertBefore(
+            (() => {
+              const div = document.createElement('div');
+              div.className = 'button-group';
+              div.appendChild(retakeBtn);
+              return div;
+            })(),
+            elements.previewContainer.nextSibling
+          );
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function resetUpload() {
+      elements.previewContainer.classList.remove('active');
+      elements.photoUpload.value = '';
+      elements.startCameraBtn.style.display = 'inline-flex';
+      elements.uploadPhotoBtn.style.display = 'inline-flex';
+      const retakeDiv = document.querySelector('#uploadRetakeBtn')?.parentElement;
+      if (retakeDiv) retakeDiv.remove();
+    }
+
     // Start Camera
     elements.startCameraBtn.addEventListener('click', async () => {
       try {
@@ -466,8 +525,9 @@
         });
         elements.videoStream.srcObject = stream;
         elements.cameraContainer.classList.add('active');
-        elements.startCameraBtn.classList.add('hidden');
-        elements.captureSelfieBtn.classList.remove('hidden');
+        elements.cameraControls.style.display = 'flex';
+        elements.startCameraBtn.style.display = 'none';
+        elements.uploadPhotoBtn.style.display = 'none';
       } catch (err) {
         alert('❌ Camera access denied. Please enable camera permissions in your browser.');
       }
@@ -485,17 +545,21 @@
       // Stop camera
       elements.videoStream.srcObject.getTracks().forEach(track => track.stop());
       elements.cameraContainer.classList.remove('active');
+      elements.cameraControls.style.display = 'none';
       
-      elements.captureSelfieBtn.classList.add('hidden');
-      elements.startCameraBtn.classList.remove('hidden');
-      elements.retakeBtn.classList.remove('hidden');
+      elements.startCameraBtn.style.display = 'inline-flex';
+      elements.uploadPhotoBtn.style.display = 'inline-flex';
+
+      // Update retake button
+      elements.retakeBtn.style.display = 'inline-flex';
     });
 
     // Retake Photo
     elements.retakeBtn.addEventListener('click', () => {
       elements.previewContainer.classList.remove('active');
-      elements.retakeBtn.classList.add('hidden');
-      elements.startCameraBtn.classList.remove('hidden');
+      elements.retakeBtn.style.display = 'none';
+      elements.startCameraBtn.style.display = 'inline-flex';
+      elements.uploadPhotoBtn.style.display = 'inline-flex';
     });
 
     // Find Matches
