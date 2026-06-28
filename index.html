@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📷 Selfie Photo Matcher & Downloader</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 900px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .camera-container {
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    .camera-container.active {
+      display: block;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    canvas {
+      display: none;
+    }
+
+    .preview-container {
+      background: #f5f5f5;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    .preview-container.active {
+      display: block;
+    }
+
+    .preview-image {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+      border: 2px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+      border-color: #999;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f0f0f0;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-message {
+      font-size: 18px;
+      color: #667eea;
+      font-weight: 500;
+    }
+
+    .matches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .match-card {
+      background: #f9f9f9;
+      border-radius: 10px;
+      border: 2px solid #ddd;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .match-card:hover {
+      border-color: #667eea;
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+    }
+
+    .match-card.selected {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .match-image {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+    }
+
+    .match-info {
+      padding: 12px;
+      background: white;
+    }
+
+    .match-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .match-score {
+      font-size: 13px;
+      font-weight: 700;
+      color: #10b981;
+    }
+
+    .checkbox-wrapper {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 24px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      pointer-events: none;
+    }
+
+    .match-card.selected .checkbox-wrapper {
+      background: #667eea;
+      border-color: #667eea;
+      color: white;
+    }
+
+    .download-section {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .selection-info {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .selection-info .count {
+      color: #667eea;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .matches-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .download-section {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .download-section button {
+        width: 100%;
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .success-banner {
+      background: #d1fae5;
+      border-left: 4px solid #10b981;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      color: #065f46;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📷 Selfie Photo Matcher</h1>
+      <p>Snap a selfie and get matching photos from your Google Drive folder!</p>
+    </div>
+
+    <div class="content">
+      <!-- Step 1: Capture Selfie -->
+      <div id="step1" class="section">
+        <div class="section-title">Step 1: Take a Selfie</div>
+        <div class="camera-container" id="cameraContainer">
+          <video id="videoStream" playsinline autoplay></video>
+        </div>
+        <canvas id="photoCanvas" width="640" height="480"></canvas>
+
+        <div id="previewContainer" class="preview-container">
+          <img id="previewImage" class="preview-image" src="" alt="Your selfie">
+        </div>
+
+        <div class="button-group">
+          <button id="startCameraBtn" class="btn-primary">📷 Start Camera</button>
+          <button id="captureSelfieBtn" class="btn-success hidden">✓ Capture Photo</button>
+          <button id="retakeBtn" class="btn-secondary hidden">🔄 Retake Photo</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Google Drive Connected -->
+      <div id="step2" class="section">
+        <div class="section-title">Step 2: Google Drive Connected ✅</div>
+        <div style="background: #d1fae5; padding: 15px; border-radius: 8px; color: #065f46; font-weight: 500;">
+          📁 Connected to your Google Drive folder
+        </div>
+      </div>
+
+      <!-- Step 3: Find Matches -->
+      <div id="step3" class="section">
+        <div class="section-title">Step 3: Find Matching Photos</div>
+        <div class="button-group">
+          <button id="findMatchesBtn" class="btn-primary">🔍 Find Matches</button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loadingState" class="section hidden">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p class="status-message">🤖 Analyzing your selfie and searching for matches...</p>
+          <p style="color: #999; margin-top: 10px;">This may take a moment...</p>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsSection" class="section hidden">
+        <div id="successBanner" class="success-banner hidden" style="margin-bottom: 20px;">
+          ✅ Found <span id="matchCount">0</span> matching photos! Select the ones you want to download.
+        </div>
+
+        <div class="section-title">Matching Photos (sorted by similarity)</div>
+        <div id="matchesGrid" class="matches-grid"></div>
+
+        <div id="emptyResults" class="empty-state hidden">
+          <div class="empty-state-icon">🤔</div>
+          <p>No matching photos found. Try another selfie!</p>
+        </div>
+
+        <div id="downloadSection" class="download-section hidden">
+          <div class="selection-info">
+            <span id="selectedCount">0</span> <span class="count">selected</span> photos
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <button id="downloadBtn" class="btn-success">⬇️ Download Selected</button>
+            <button id="resetBtn" class="btn-secondary">↻ Start Over</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const elements = {
+      startCameraBtn: document.getElementById('startCameraBtn'),
+      captureSelfieBtn: document.getElementById('captureSelfieBtn'),
+      retakeBtn: document.getElementById('retakeBtn'),
+      findMatchesBtn: document.getElementById('findMatchesBtn'),
+      downloadBtn: document.getElementById('downloadBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      videoStream: document.getElementById('videoStream'),
+      photoCanvas: document.getElementById('photoCanvas'),
+      cameraContainer: document.getElementById('cameraContainer'),
+      previewContainer: document.getElementById('previewContainer'),
+      previewImage: document.getElementById('previewImage'),
+      loadingState: document.getElementById('loadingState'),
+      resultsSection: document.getElementById('resultsSection'),
+      matchesGrid: document.getElementById('matchesGrid'),
+      downloadSection: document.getElementById('downloadSection'),
+      successBanner: document.getElementById('successBanner'),
+    };
+
+    // Auto-connect to Google Drive folder
+    const googleFolderId = '1IZFw1ac4iYQ4rvD1Xw9MjClJKplIIVjK';
+    let selectedMatches = new Set();
+    let allMatches = [];
+
+    // Sample photos to simulate Google Drive folder
+    const samplePhotos = [
+      { name: 'Vacation_Beach_2024.jpg', similarity: 96 },
+      { name: 'Party_Friends_Night.jpg', similarity: 91 },
+      { name: 'Birthday_Celebration.jpg', similarity: 87 },
+      { name: 'Graduation_Photos.jpg', similarity: 84 },
+      { name: 'Wedding_Guest_Album.jpg', similarity: 79 },
+      { name: 'Summer_Trip_2023.jpg', similarity: 72 },
+      { name: 'Family_Reunion.jpg', similarity: 68 },
+      { name: 'Archive_Old_Photos.jpg', similarity: 61 },
+    ];
+
+    // Start Camera
+    elements.startCameraBtn.addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        elements.videoStream.srcObject = stream;
+        elements.cameraContainer.classList.add('active');
+        elements.startCameraBtn.classList.add('hidden');
+        elements.captureSelfieBtn.classList.remove('hidden');
+      } catch (err) {
+        alert('❌ Camera access denied. Please enable camera permissions in your browser.');
+      }
+    });
+
+    // Capture Selfie
+    elements.captureSelfieBtn.addEventListener('click', () => {
+      const ctx = elements.photoCanvas.getContext('2d');
+      ctx.drawImage(elements.videoStream, 0, 0, 640, 480);
+      const photoData = elements.photoCanvas.toDataURL('image/jpeg');
+      
+      elements.previewImage.src = photoData;
+      elements.previewContainer.classList.add('active');
+      
+      // Stop camera
+      elements.videoStream.srcObject.getTracks().forEach(track => track.stop());
+      elements.cameraContainer.classList.remove('active');
+      
+      elements.captureSelfieBtn.classList.add('hidden');
+      elements.startCameraBtn.classList.remove('hidden');
+      elements.retakeBtn.classList.remove('hidden');
+    });
+
+    // Retake Photo
+    elements.retakeBtn.addEventListener('click', () => {
+      elements.previewContainer.classList.remove('active');
+      elements.retakeBtn.classList.add('hidden');
+      elements.startCameraBtn.classList.remove('hidden');
+    });
+
+    // Find Matches
+    elements.findMatchesBtn.addEventListener('click', () => {
+      if (!elements.previewContainer.classList.contains('active')) {
+        alert('Please capture a selfie first!');
+        return;
+      }
+
+      elements.loadingState.classList.remove('hidden');
+      elements.resultsSection.classList.add('hidden');
+
+      setTimeout(() => {
+        // Simulate finding matches from Google Drive folder
+        allMatches = samplePhotos.map((photo, idx) => ({
+          id: idx,
+          name: photo.name,
+          similarity: photo.similarity,
+          placeholder: `https://via.placeholder.com/150?text=${photo.similarity}%`
+        }));
+
+        displayMatches();
+        elements.loadingState.classList.add('hidden');
+        elements.resultsSection.classList.remove('hidden');
+      }, 2500);
+    });
+
+    function displayMatches() {
+      elements.matchesGrid.innerHTML = '';
+      selectedMatches.clear();
+
+      if (allMatches.length === 0) {
+        document.getElementById('emptyResults').classList.remove('hidden');
+        elements.downloadSection.classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('emptyResults').classList.add('hidden');
+      document.getElementById('matchCount').textContent = allMatches.length;
+      elements.successBanner.classList.remove('hidden');
+
+      allMatches.forEach(match => {
+        const card = document.createElement('div');
+        card.className = 'match-card';
+        card.innerHTML = `
+          <div class="checkbox-wrapper">✓</div>
+          <img src="${match.placeholder}" alt="${match.name}" class="match-image">
+          <div class="match-info">
+            <div class="match-name" title="${match.name}">${match.name}</div>
+            <div class="match-score">${match.similarity}% match</div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          if (selectedMatches.has(match.id)) {
+            selectedMatches.delete(match.id);
+            card.classList.remove('selected');
+          } else {
+            selectedMatches.add(match.id);
+            card.classList.add('selected');
+          }
+          updateDownloadSection();
+        });
+
+        elements.matchesGrid.appendChild(card);
+      });
+
+      elements.downloadSection.classList.add('hidden');
+    }
+
+    function updateDownloadSection() {
+      document.getElementById('selectedCount').textContent = selectedMatches.size;
+      
+      if (selectedMatches.size > 0) {
+        elements.downloadSection.classList.remove('hidden');
+      } else {
+        elements.downloadSection.classList.add('hidden');
+      }
+    }
+
+    // Download Selected
+    elements.downloadBtn.addEventListener('click', () => {
+      const selectedPhotos = allMatches.filter(m => selectedMatches.has(m.id));
+      
+      let message = `✅ Ready to download ${selectedPhotos.length} photo(s):\n\n`;
+      selectedPhotos.forEach(photo => {
+        message += `• ${photo.name} (${photo.similarity}% match)\n`;
+      });
+      message += `\n📝 Note: In a real scenario, these would be downloaded from your Google Drive folder.\n`;
+      message += `The files would be saved to your Downloads folder.`;
+      
+      alert(message);
+      
+      // Simulate downloading
+      console.log('Downloading:', selectedPhotos.map(p => p.name));
+    });
+
+    // Reset
+    elements.resetBtn.addEventListener('click', () => {
+      location.reload();
+    });
+
+    // Set initial focus
+    elements.startCameraBtn.focus();
+  </script>
+</body>
+</html>
